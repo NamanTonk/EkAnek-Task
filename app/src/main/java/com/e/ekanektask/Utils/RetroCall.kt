@@ -12,7 +12,6 @@ import retrofit2.http.Query
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 
-
 class RetroCall {
     companion object {
         var CallAPi = Retrofit.Builder().baseUrl(String(Base64.decode( "aHR0cHM6Ly9waXhhYmF5LmNvbQ==",Base64.DEFAULT), Charset.forName("UTF-8"))).client(createIntercepter())
