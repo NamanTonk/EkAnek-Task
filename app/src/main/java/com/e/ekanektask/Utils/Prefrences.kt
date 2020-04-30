@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 
 const val SAVE_LIST = "SaveList "
 const val PREFERENCES_KEY = "Save_History "
+const val SAVE_STRING = "Save_String "
 class Prefrences {
     companion object {
         var preferences: SharedPreferences? = null
@@ -32,5 +33,12 @@ class Prefrences {
     fun getData(): HashSet<String>{
         return preferences?.getStringSet(
             SAVE_LIST, mutableSetOf()) as HashSet<String>
+    }
+
+    fun saveStringData(searchKey : String , string: String){
+        preferencesEditor?.putString(searchKey,string)?.commit()
+    }
+    fun getStringData(searchKey: String): String{
+       return preferences?.getString(searchKey,"{}").toString()?:"{}"
     }
 }

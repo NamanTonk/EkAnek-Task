@@ -1,7 +1,9 @@
 package com.e.ekanektask.activity
 
 import android.content.Context
+import android.content.IntentFilter
 import android.os.Bundle
+import android.os.Handler
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -17,16 +19,21 @@ import com.e.ekanektask.Utils.RetroCall
 import com.e.ekanektask.Utils.Prefrences
 import com.e.ekanektask.adapter.RecyclerViewAdapter
 import com.e.ekanektask.model.ImagesModel
+import com.e.ekanektask.receiver.NetworkStateReceiver
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.search_view.*
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.lang.Exception
 import kotlin.collections.ArrayList
 import kotlin.collections.HashSet
 
 
-class MainActivity : AppCompatActivity(), View.OnClickListener {
+class MainActivity : AppCompatActivity(), View.OnClickListener,
+    NetworkStateReceiver.NetworkStateReceiverListener {
     companion object {
         var set = HashSet<String>()
         fun disableForFiveSecond(view: View) {
@@ -44,6 +51,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
     var adapter: RecyclerViewAdapter? = null
     var list = ArrayList<ImagesModel.HitsBean>()
+    private val networkStateReceiver: NetworkStateReceiver? = NetworkStateReceiver()
+    var gridCound = 2
+    var networkAvailiblity = true
     var dialog: AlertDialog? = null
     var setPage = 1
     var arrayAdapter: ArrayAdapter<String>? = null
@@ -57,49 +67,65 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         initializeView()
-        apiCall()
+
+    }
+
+    override fun onResume() {
+        super.onResume()
+        var filter = IntentFilter()
+        filter.addAction("android.net.conn.CONNECTIVITY_CHANGE")
+        filter.addAction("android.net.wifi.WIFI_STATE_CHANGED")
+        filter.addAction("android.net.wifi.STATE_CHANGE")
+        registerReceiver(networkStateReceiver, filter)
     }
 
     /** APi Calling Method**/
     private fun apiCall() {
         Log.d("Naman", setPage.toString())
 
-        RetroCall.CallAPi.getImages(searchKey, true, setPage).enqueue(object : Callback<ImagesModel> {
-            override fun onFailure(call: Call<ImagesModel>, t: Throwable) {
-                Log.d("Naman", t.message)
-            }
+        RetroCall.CallAPi.getImages(searchKey, true, setPage)
+            .enqueue(object : Callback<ImagesModel> {
+                override fun onFailure(call: Call<ImagesModel>, t: Throwable) {
+                    Log.d("Naman", t.message)
+                }
 
-            override fun onResponse(call: Call<ImagesModel>, response: Response<ImagesModel>) {
-                if (response?.code() == 200) {
-                    response?.let {
-                        it.body()?.let { body ->
-                            if (body.hits.size == 0) {
-                                nodataFound()
-                                return
-                            }
-                            if (quiryChange) {
-                                list.clear()
-                                quiryChange = false
-                            }
-                            list?.addAll(body.hits)
-                            adapter?.notifyDataSetChanged()
-                            loaderHide()
+                override fun onResponse(call: Call<ImagesModel>, response: Response<ImagesModel>) {
+                    if (response?.code() == 200) {
+                        response?.let {
+                            it.body()?.let { body ->
+                                if (body.hits.size == 0) {
+                                    nodataFound()
+                                    return
+                                }
+                                if (quiryChange) {
+                                    list.clear()
+                                    quiryChange = false
+                                }
+                                list?.addAll(body.hits)
+                                adapter?.notifyDataSetChanged()
+                                loaderHide()
+                                prefrences?.saveStringData(searchKey, Gson().toJson(list).toString())
 
+
+                            }
                         }
+
                     }
+
 
                 }
 
-
-            }
-
-        })
+            })
 
     }
 
     /** No data Available When Data Not Show **/
     private fun nodataFound() {
-        no_data_found?.text = "'$searchKey'\n NO Data Found at this Quirt "
+        if(networkAvailiblity){
+            no_data_found?.text = "'$searchKey'\n NO Data Found at this Quirt "
+        }else{
+            no_data_found?.text = "'$searchKey'\n this Search Offline Data Not Found"
+        }
         recyclerView?.visibility = View.GONE
         no_data_found?.visibility = View.VISIBLE
         loader_show?.visibility = View.GONE
@@ -118,6 +144,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         loader_show.visibility = View.GONE
         no_data_found.visibility = View.GONE
         recyclerView.visibility = View.VISIBLE
+        adapter?.notifyDataSetChanged()
+
     }
 
     /** Initialize View's **/
@@ -129,8 +157,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         prefrences?.getData()?.let { set.addAll(it) }
         search_image?.setOnClickListener(this)
         search?.setOnClickListener(this)
+        networkStateReceiver?.addListener(this@MainActivity)
         change_grid?.setOnClickListener(this)
-        recyclerViewSetup(2, list)
+//        recyclerViewSetup()
         searchShow()
 
     }
@@ -154,20 +183,24 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             when (which) {
 
                 0 -> {
-                    recyclerViewSetup(5, list)
+                    gridCound = 5
+                    recyclerViewSetup()
                     dialog.dismiss()
 
                 }
                 1 -> {
-                    recyclerViewSetup(4, list)
+                    gridCound = 4
+                    recyclerViewSetup()
                     dialog.dismiss()
                 }
                 2 -> {
-                    recyclerViewSetup(3, list)
+                    gridCound = 3
+                    recyclerViewSetup()
                     dialog.dismiss()
                 }
                 3 -> {
-                    recyclerViewSetup(2, list)
+                    gridCound = 2
+                    recyclerViewSetup()
                     dialog.dismiss()
                 }
             }
@@ -177,20 +210,19 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
     /** List Setup**/
     private fun recyclerViewSetup(
-        gridCound: Int,
-        hits: ArrayList<ImagesModel.HitsBean>
     ) {
         manager = GridLayoutManager(this@MainActivity, gridCound)
         recyclerView.layoutManager = manager
-        adapter = RecyclerViewAdapter(hits)
+        adapter = RecyclerViewAdapter(list)
         recyclerView?.adapter = adapter
-        recyclerView?.addOnScrollListener(object : EndlessRecyclerViewScrollListener(manager) {
-            override fun onLoadMore(page: Int, totalItemsCount: Int, view: RecyclerView?) {
-                setPage++
-                apiCall()
-            }
-
-        })
+        if (networkAvailiblity) {
+            recyclerView?.addOnScrollListener(object : EndlessRecyclerViewScrollListener(manager) {
+                override fun onLoadMore(page: Int, totalItemsCount: Int, view: RecyclerView?) {
+                    setPage++
+                    apiCall()
+                }
+            })
+        }
 
 
     }
@@ -207,17 +239,21 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                 dialog?.show()
             }
             search -> {
-                var searchQuiry = search_text?.text?.toString()
-                if (searchQuiry?.isNotEmpty() == true) {
+                var searchQuiry = search_text?.text?.toString() ?: ""
+                if (searchQuiry.isNotEmpty()) {
                     searchKey = searchQuiry.trim()
-                    apiCall()
-                    quiryChange = true
+                    if (networkAvailiblity) {
+                        apiCall()
+                        quiryChange = true
+                        loaderShow()
+                        set.add(searchQuiry)
+                    } else {
+                        networkUnavailable()
+                    }
                     disableForFiveSecond(
                         search
                     )
-                    loaderShow()
-                    set.add(searchQuiry)
-                    Log.d("NamanSEarch", set.size.toString())
+
                     searchShow()
                     hideKeyboard()
                     search_text?.setText("")
@@ -225,6 +261,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                     Toast.makeText(this@MainActivity, "Please Enter SomeText.", Toast.LENGTH_SHORT)
                         .show()
                 }
+
+
             }
         }
     }
@@ -239,12 +277,13 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     override fun onPause() {
         super.onPause()
         prefrences?.saveData(set)
-
     }
 
     override fun onDestroy() {
         super.onDestroy()
         prefrences?.saveData(set)
+        networkStateReceiver?.removeListener(this@MainActivity)
+        unregisterReceiver(networkStateReceiver)
     }
 
     override fun onBackPressed() {
@@ -254,4 +293,60 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
         } else super.onBackPressed()
     }
+
+    override fun networkAvailable() {
+        networkAvailiblity = true
+        onlineTextShow()
+        list.clear()
+        recyclerViewSetup()
+        apiCall()
+    }
+
+    override fun networkUnavailable() {
+        try {
+            networkAvailiblity = false
+            offlineTextShow()
+            list.clear()
+            list.addAll(
+                Gson().fromJson<ArrayList<ImagesModel.HitsBean>>(
+                    prefrences?.getStringData(searchKey),
+                    object : TypeToken<ArrayList<ImagesModel.HitsBean>>() {}.type
+                )
+            )
+            if (list.size > 0) {
+                recyclerViewSetup()
+                loaderHide()
+            } else nodataFound()
+        }catch (e:Exception){
+            e.printStackTrace()
+            nodataFound()
+        }
+
+
+    }
+
+    fun onlineTextShow() {
+        online_offline.visibility = View.VISIBLE
+        online_offline.text = "Online"
+        online_offline.setBackgroundResource(R.drawable.online)
+        Handler().postDelayed({
+            online_offline.visibility = View.GONE
+
+        }, 1000)
+
+    }
+
+    fun offlineTextShow() {
+        online_offline.visibility = View.VISIBLE
+        online_offline.text = "Offline"
+        online_offline.setBackgroundResource(R.drawable.offline)
+        Handler().postDelayed({
+            online_offline.visibility = View.GONE
+
+        }, 1000)
+
+    }
+
+
+
 }

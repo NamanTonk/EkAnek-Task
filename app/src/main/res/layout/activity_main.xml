@@ -64,9 +64,11 @@
     </androidx.appcompat.widget.Toolbar>
 
     <FrameLayout
-        android:background="@color/off_white"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:background="@color/off_white">
+
+
 
         <ProgressBar
             android:id="@+id/loader_show"
@@ -76,22 +78,35 @@
             android:visibility="visible" />
 
         <TextView
-            android:gravity="center"
-            tools:text="'LOVE'\nNO DATA FOUND AT THIS QUIRYY"
-            android:textSize="18sp"
-            android:textColor="@color/colorPrimary"
-            android:visibility="gone"
-            android:layout_gravity="center"
             android:id="@+id/no_data_found"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:textColor="@color/colorPrimary"
+            android:textSize="18sp"
+            android:visibility="gone"
+            tools:text="'LOVE'\nNO DATA FOUND AT THIS QUIRYY" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerView"
-            android:background="@color/off_white"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:background="@color/off_white"
             android:visibility="gone" />
+        <TextView
+            android:layout_marginTop="8dp"
+            android:layout_gravity="center|top"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
+            android:paddingBottom="4dp"
+            android:paddingTop="4dp"
+            android:textSize="14sp"
+            android:visibility="gone"
+            android:textColor="@color/white"
+            android:id="@+id/online_offline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
     </FrameLayout>
 
 </LinearLayout>
