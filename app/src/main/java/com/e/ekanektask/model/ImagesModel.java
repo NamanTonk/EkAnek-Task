@@ -1,7 +1,6 @@
 package com.e.ekanektask.model;
 
 import java.util.List;
-
 public class ImagesModel {
     private List<HitsBean> hits;
     public List<HitsBean> getHits() {
