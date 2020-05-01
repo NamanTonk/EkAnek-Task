@@ -9,6 +9,7 @@ public class ImagesModel {
     public void setHits(List<HitsBean> hits) {
         this.hits = hits;
     }
+
     public static class HitsBean {
         private String webformatURL;
         public String getWebformatURL() {
