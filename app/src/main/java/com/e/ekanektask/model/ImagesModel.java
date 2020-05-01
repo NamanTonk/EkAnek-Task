@@ -6,6 +6,7 @@ public class ImagesModel {
     public List<HitsBean> getHits() {
         return hits;
     }
+
     public void setHits(List<HitsBean> hits) {
         this.hits = hits;
     }
